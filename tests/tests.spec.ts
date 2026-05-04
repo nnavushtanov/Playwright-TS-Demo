@@ -62,7 +62,7 @@ test('Login with registered user', async ({ page }) => {
   
 });
 
-test.only('Buy product', async ({ page }) => {
+test('Buy product', async ({ page }) => {
   await loginUser(page, email1, password1);
   await page.getByRole('link', { name: ' Products' }).click();
   await page.getByRole('link', { name: ' View Product' }).first().click();
