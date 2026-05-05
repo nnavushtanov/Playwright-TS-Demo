@@ -56,32 +56,80 @@ test('Login with registered user', async ({ page }) => {
   await page.locator('form').filter({ hasText: 'Signup' }).getByPlaceholder('Email Address').fill(email);
   await page.getByRole('button', { name: 'Signup' }).click();
 
-  // Assert that the user already exists
+  // Assert that the user already exists and message is visible
   await expect(page.getByText('Email Address already exist!')).toBeVisible();
   await expect(page.getByText('Email Address already exist!')).toHaveText('Email Address already exist!');
   
+});
+
+test('Buy products from different categories and check their quantity and total price', async ({ page }) => {
+  await page.goto('https://automationexercise.com/');
+  loginUser(page, email1, password1);
+  await page.locator('img[src="/get_product_picture/1"]').hover();
+  await page.getByText('Add to cart').nth(1).click();
+  await page.getByRole('button', { name: 'Continue Shopping' }).click();
+  await page.locator('img[src="/get_product_picture/2"]').hover();
+  await page.getByText('Add to cart').nth(3).click();
+  await page.getByRole('button', { name: 'Continue Shopping' }).click();
+  await page.locator('img[src="/get_product_picture/3"]').hover();
+  await page.getByText('Add to cart').nth(5).click();
+  await page.getByRole('button', { name: 'Continue Shopping' }).click();
+  await page.getByRole('link', { name: ' Kids' }).click();
+  await page.getByRole('link', { name: 'Dress' }).click();
+  await page.locator('img[src="/get_product_picture/16"]').hover();
+  await page.getByRole('link', { name: ' Add to cart' }).nth(1).click();
+  await page.getByRole('button', { name: 'Continue Shopping' }).click();
+  await page.getByRole('heading', { name: ' Kids' }).click();
+  await page.getByRole('link', { name: ' Kids' }).click();
+  await page.getByRole('link', { name: 'Tops & Shirts' }).click();
+  await page.locator('img[src="/get_product_picture/11"]').hover();
+  await page.getByRole('link', { name: ' Add to cart' }).nth(1).click();
+  await page.getByRole('link', { name: 'View Cart' }).click();
+
+  const quantity = await page.locator('table tbody tr td:nth-child(4)').allTextContents();
+
+    //  Assert that the quantity of each product is correct
+      for (let i = 0; i < quantity.length; i++) {
+        await expect(quantity[i].trim()).toBe('1');
+      }
+  
+  await page.getByText('Proceed To Checkout').click();
+
+  const productPrice = await page.locator('table tbody tr td:nth-child(5)').allTextContents();
+  let sumOfProducts:number = 0;
+  let total = await page.locator('p[class="cart_total_price"]').last().textContent();
+
+  await page.waitForLoadState('networkidle');
+  for (let i = 0; i < productPrice.length; i++) {
+    const price = parseInt(productPrice[i].trim().replace('Rs. ', ''));
+    sumOfProducts += price;
+  }
+  const totalPrice = parseInt(total?.trim().replace('Rs. ', '') || '0  ');
+
+  // Assert that the total price is correct
+  expect(sumOfProducts).toBe(totalPrice);
+
+  await page.getByRole('link', { name: 'Place Order' }).click();
+
+  enterCardDetails(page);
+
+  // Assert that the order was placed successfully
+  await expect(page.getByText('Congratulations! Your order has been confirmed!')).toBeVisible();
+  await expect(page.getByText('Congratulations! Your order has been confirmed!')).toHaveText('Congratulations! Your order has been confirmed!');
 });
 
 test('Buy product', async ({ page }) => {
   await loginUser(page, email1, password1);
   await page.getByRole('link', { name: ' Products' }).click();
   await page.getByRole('link', { name: ' View Product' }).first().click();
+  await page.waitForLoadState('networkidle');
   await page.getByRole('button', { name: ' Add to cart' }).click();
+  await page.waitForLoadState('networkidle');
   await page.getByRole('link', { name: 'View Cart' }).click();
   await page.getByText('Proceed To Checkout').click();
   await page.getByRole('link', { name: 'Place Order' }).click();
-  await page.locator('input[name="name_on_card"]').click();
-  await page.locator('input[name="name_on_card"]').fill('Playwright User');
-  await page.locator('input[name="card_number"]').fill('1234123412341234');
-  await page.getByRole('textbox', { name: 'ex.' }).click();
-  await page.locator('input[name="card_number"]').fill('12341234123412341');
-  await page.getByRole('textbox', { name: 'ex.' }).fill('234');
-  await page.getByRole('textbox', { name: 'MM' }).click();
-  await page.getByRole('textbox', { name: 'MM' }).fill('12');
-  await page.getByRole('textbox', { name: 'YYYY' }).click();
-  await page.getByRole('textbox', { name: 'YYYY' }).fill('2012');
-  await page.getByRole('button', { name: 'Pay and Confirm Order' }).click();
-
+  await enterCardDetails(page);
+  
   // Assert that the order was placed successfully
   await expect(page.getByText('Congratulations! Your order has been confirmed!')).toBeVisible();
   await expect(page.getByText('Congratulations! Your order has been confirmed!')).toHaveText('Congratulations! Your order has been confirmed!');
@@ -93,7 +141,7 @@ test('Delete user', async ({ page }) => {
   await loginUser(page, email, password);
   await page.getByRole('link', { name: ' Delete Account' }).click();
 
-  // Assert that the account was deleted successfully
+  // Assert that we are on the account deleted page
   await expect(page.locator('h2[data-qa="account-deleted"]')).toBeVisible();
   await page.getByRole('link', { name: 'Continue' }).click();
 
@@ -109,4 +157,13 @@ function loginUser(page:any , email:string, password:string) {
     .then(() => page.locator('form').filter({ hasText: 'Login' }).getByPlaceholder('Email Address').fill(email))
     .then(() => page.getByRole('textbox', { name: 'Password' }).fill(password))
     .then(() => page.getByRole('button', { name: 'Login' }).click());
+}
+
+function enterCardDetails(page:any) {
+  return page.locator('input[name="name_on_card"]').fill('Playwright User')
+    .then(() => page.locator('input[name="card_number"]').fill('1234123412341234'))
+    .then(() => page.getByRole('textbox', { name: 'ex.' }).fill('234'))
+    .then(() => page.getByRole('textbox', { name: 'MM' }).fill('12'))
+    .then(() => page.getByRole('textbox', { name: 'YYYY' }).fill('2012'))
+    .then(() => page.getByRole('button', { name: 'Pay and Confirm Order' }).click());
 }
